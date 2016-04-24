@@ -1,0 +1,17 @@
+{application, elevator_scheduler,
+ [{description, "An OTP application"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { elevator_scheduler, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.

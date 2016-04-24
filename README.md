@@ -1,2 +1,9 @@
-# elevator-scheduler
-Elevator Control / Scheduling System
+elevator_scheduler
+=====
+
+An OTP application
+
+Build
+-----
+
+    $ rebar3 compile
