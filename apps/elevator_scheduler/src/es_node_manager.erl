@@ -17,6 +17,7 @@
          update_node/3,
          update_node/4,
          get_nodes/0,
+         steps_to_pickup/3,
          pickup/3,
          step/1,
          status/1]).
@@ -70,6 +71,15 @@ update_node(Key, Floor, Direction, GoalFloors) ->
 get_nodes() ->
     [ {Key, Pid} || {Key, Pid, _, _} <- 
                         supervisor:which_children(?MODULE)].
+
+-spec steps_to_pickup(atom(), non_neg_integer(), up | down) -> non_neg_integer().
+steps_to_pickup(Key, Floor, Direction) ->
+    case get_node_pid(Key) of
+        {error, _} ->
+            ok;
+        Pid ->
+            es_node_fsm:steps_to_pickup(Pid, Floor, Direction)
+    end.
 
 -spec pickup(atom(), non_neg_integer(), up | down) -> ok.
 pickup(Key, Floor, Direction) ->

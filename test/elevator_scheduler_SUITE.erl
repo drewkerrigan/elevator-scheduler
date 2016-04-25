@@ -51,29 +51,37 @@ one_node(_Config) ->
     ok = es_site_manager:step(3),
     2 = node_value(south, 'south-1', floor),
     down = node_value(south, 'south-1', direction),
+    ok = es_site_manager:pickup(south, 10, up),
+    ok = es_site_manager:step(11),
+    10 = node_value(south, 'south-1', floor),
+    up = node_value(south, 'south-1', direction),
     ok.
 
 two_nodes(_Config) ->
-%%     ok = es_site_manager:pickup(north, 5, down),
-%%     ok = es_site_manager:pickup(north, 6, up),
-    
-%%     1 = length(node_value(north, 'north-1', goal_floors)),
-%%     1 = length(node_value(north, 'north-2', goal_floors)),
-    
-%%     ok = es_site_manager:step(5),
-
-%%     5 = node_value(north, 'north-1', floor),
-%%     down = node_value(north, 'north-1', direction),
-%%     ok = es_site_manager:step(),
-%%     6 = node_value(north, 'north-2', floor),
-%%     up = node_value(north, 'north-2', direction),
-
-%%     ok = es_site_manager:pickup(north, 1, up),
-%%     ok = es_site_manager:step(),
-%%     %% ok = es_site_manager:pickup(north, 6, up),
-
-%%     ok = es_site_manager:status(),
-    ok.
+    ok = es_site_manager:pickup(north, 11, up),
+    ok = es_site_manager:pickup(north, 10, down),
+    ok = es_site_manager:pickup(north, 5, down),
+    ok = es_site_manager:pickup(north, 6, up),
+    2 = length(node_value(north, 'north-1', goal_floors)),
+    2 = length(node_value(north, 'north-2', goal_floors)),
+    ok = es_site_manager:step(5),
+    6 = node_value(north, 'north-1', floor),
+    up = node_value(north, 'north-1', direction),
+    6 = node_value(north, 'north-2', floor),
+    up = node_value(north, 'north-2', direction),
+    ok = es_site_manager:step(),
+    6 = node_value(north, 'north-1', floor),
+    up = node_value(north, 'north-1', direction),
+    7 = node_value(north, 'north-2', floor),
+    up = node_value(north, 'north-2', direction),
+    17 = es_node_manager:steps_to_pickup('north-1', 1, up),
+    15 = es_node_manager:steps_to_pickup('north-2', 1, up),
+    ok = es_site_manager:pickup(north, 1, up),
+    ok = es_site_manager:step(5),
+    11 = node_value(north, 'north-1', floor),
+    up = node_value(north, 'north-1', direction),
+    9 = node_value(north, 'north-2', floor),
+    down = node_value(north, 'north-2', direction).
 
 node_value(Site, Node, Key) ->
     Status = es_site_manager:status(),

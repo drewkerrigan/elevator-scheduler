@@ -7,6 +7,7 @@
 
 -export([update/3,
          update/4,
+         steps_to_pickup/3,
          pickup/3,
          step/1,
          status/1]).
@@ -62,6 +63,10 @@ update(Pid, Floor, Direction) ->
 -spec update(pid(), non_neg_integer(), up | down, [term()]) -> ok.
 update(Pid, Floor, Direction, GoalFloors) ->
     gen_fsm:send_all_state_event(Pid, {update, Floor, Direction, GoalFloors}).
+
+-spec steps_to_pickup(pid(), non_neg_integer(), up | down) -> non_neg_integer().
+steps_to_pickup(Pid, Floor, Direction) ->
+    gen_fsm:sync_send_all_state_event(Pid, {steps_to_pickup, Floor, Direction}).
 
 -spec pickup(pid(), non_neg_integer(), up | down) -> ok.
 pickup(Pid, Floor, Direction) ->
@@ -135,10 +140,15 @@ handle_event({pickup, Floor, Direction}, _StateName, State =
                  #state{floor = CurrentFloor,
                         direction = CurrentDirection,
                         goal_floors = GoalFloors}) ->
-    GoalFloors1 = [{Floor, Direction} | GoalFloors],
-    GoalFloors2 = sort_floor_distances(CurrentFloor, CurrentDirection, GoalFloors1),
-    State1 = State#state{goal_floors = GoalFloors2},
-    {next_state, moving, State1};
+    case lists:member({Floor, Direction}, GoalFloors) of
+        true ->
+            {next_state, moving, State};
+        false ->
+            GoalFloors1 = [{Floor, Direction} | GoalFloors],
+            GoalFloors2 = sort_goal_floors(CurrentFloor, CurrentDirection, GoalFloors1),
+            State1 = State#state{goal_floors = GoalFloors2},
+            {next_state, moving, State1}
+    end;
 handle_event(_Event, _StateName, State) ->
     {stop, {error, unhandled_event}, State}.
 
@@ -155,6 +165,30 @@ handle_sync_event(status, _From, StateName, State =
              {goal_floors, GoalFloor},
              {direction, Direction}],
     {reply, Reply, StateName, State};
+handle_sync_event({steps_to_pickup, Floor, Direction}, _From, StateName, State = 
+                      #state{floor = CurrentFloor,
+                             direction = CurrentDirection,
+                             goal_floors = GoalFloors}) ->
+    Steps = 
+        case length(GoalFloors) of
+            0 -> 0;
+            _ ->
+                GoalFloors1 = [{Floor, Direction} | GoalFloors],
+                GoalFloors2 = sort_goal_floors(CurrentFloor, CurrentDirection, GoalFloors1),
+                Index = index_of({Floor, Direction}, GoalFloors2),
+                {Steps1, _, _} = 
+                    lists:foldl(
+                      fun({F, _}, {Total, Ind, LastF}) ->
+                              case Ind =< Index of
+                                  true ->
+                                      {Total + es_util:distance(LastF, F)+1, Ind+1, F};
+                                  false ->
+                                      {Total, Ind+1, F}
+                              end
+                      end, {0, 1, CurrentFloor}, GoalFloors2),
+                Steps1
+        end,
+    {reply, Steps, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
     {reply, {error, unhandled_event}, StateName, State}.
 
@@ -175,17 +209,31 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec sort_floor_distances(non_neg_integer(), up | down,
+-spec sort_goal_floors(non_neg_integer(), up | down,
                       [{non_neg_integer(), up | down}]) -> 
                              [{non_neg_integer(), up | down}].
-sort_floor_distances(F1, D1, GoalFloors) ->
-    Sorted1 = filter_sort_floor_distances(F1, GoalFloors, D1),
-    Sorted2 = filter_sort_floor_distances(F1, GoalFloors, 
-                                      es_util:invert_direction(D1)),
-    Sorted1 ++ Sorted2.
+sort_goal_floors(F1, D1, GoalFloors) ->
+    {L1, L2} = filter_goal_floors(F1, up, GoalFloors),
+    {L3, L4} = filter_goal_floors(F1, down, GoalFloors),
 
-filter_sort_floor_distances(F1, GoalFloors, FilterDirection) ->
-    Sorted = lists:keysort(1, [ {es_util:distance(F1, F2), {F2, D2}} 
-                           || {F2, D2} <- GoalFloors, 
-                              D2 =:= FilterDirection ]),
-    [ {F, D} || {_, {F, D}} <- Sorted ].
+    case D1 of
+         up ->
+            L2 ++ L4 ++ L3 ++ L1;
+        down ->
+            L3 ++ L1 ++ L2 ++ L4
+    end.
+
+filter_goal_floors(F1, D1, GoalFloors) ->
+    L1 = lists:keysort(1, [{F2, D2} || {F2, D2} <- GoalFloors, D2 =:= D1 ]),
+    L2 = [{F2, D2} || {F2, D2} <- L1, F2 =< F1],
+    L3 = [{F2, D2} || {F2, D2} <- L1, F2 > F1],
+    case D1 of
+        up -> {L2, L3};
+        down -> {lists:reverse(L2), lists:reverse(L3)}
+    end.
+
+index_of(Item, List) -> index_of(Item, List, 1).
+
+index_of(_, [], _)  -> not_found;
+index_of(Item, [Item|_], Index) -> Index;
+index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).

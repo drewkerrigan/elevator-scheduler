@@ -103,10 +103,9 @@ ready({pickup, Floor, Direction}, _From, State =
         0 -> 
             {reply, {error, no_nodes}, ready, State};
         _ ->
-            NodeStatuses = 
-                [ es_node_manager:status(K)
-                  || K <- NodeKeys ],
-            Reply = do_pickup(Floor, Direction, NodeStatuses),
+            Steps = [ {es_node_manager:steps_to_pickup(K, Floor, Direction), K} || K <- NodeKeys ],
+            [{_,TargetNode}|_] = lists:keysort(1, Steps),
+            Reply = es_node_manager:pickup(TargetNode, Floor, Direction),
             {reply, Reply, ready, State}
     end;
 ready(_Event, _From, State) ->
@@ -144,39 +143,3 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
--spec do_pickup([{atom(), term()}], non_neg_integer(), up | down) -> ok.
-do_pickup(Floor, Direction, NodeStatuses) ->
-    [TargetNode|_] = sort_node_distances(Floor, Direction, NodeStatuses),
-    es_node_manager:pickup(TargetNode, Floor, Direction).
-
-sort_node_distances(Floor, Direction, NodeStatuses) ->
-    Sorted1 = filter_sort_node_distances(Floor, NodeStatuses, Direction),
-    Sorted2 = filter_sort_node_distances(Floor, NodeStatuses, 
-                                         es_util:invert_direction(Direction)),
-    Sorted1 ++ Sorted2.
-
-filter_sort_node_distances(Floor, NodeStatuses, FilterDirection) ->
-    Nodes = [ {es_util:distance(Floor, calc_node_goal_floor(Status)), K}
-      || {K, Status} <- NodeStatuses,
-         FilterDirection =:= calc_node_goal_direction(Floor, Status)
-    ],
-    Sorted = lists:keysort(1, Nodes),
-    [ N || {_, N} <- Sorted ].
-
-calc_node_goal_floor(Status) ->
-    case proplists:get_value(goal_floors, Status) of
-        [] ->
-            proplists:get_value(floor, Status);
-        [{GF, _}|_] ->
-            GF
-    end.
-
-calc_node_goal_direction(F2, Status) ->
-    case proplists:get_value(goal_floors, Status) of
-        [] ->
-            F1 = calc_node_goal_floor(Status),
-            es_util:direction(F1, F2);
-        [{_, GD}|_] ->
-            GD
-    end.
