@@ -12,7 +12,13 @@ A Mac OSX 10.11 precompiled tarball is available here: [https://github.com/drewk
     
 ## Run
 
-    $ make rel
+    $ ./_build/default/rel/elevator_scheduler/bin/elevator_scheduler console
+
+Or if you've downloaded the precompiled tarball,
+
+    $ mkdir elevator-scheduler
+    $ tar -xzvf elevator_scheduler-0.1.0.tar.gz -C elevator-scheduler
+    $ ./elevator-scheduler/bin/elevator_scheduler console
     
 ## Test
 
