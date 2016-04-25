@@ -37,5 +37,8 @@ clean:
 rel: distclean
 	@$(REBAR3) release
 
+tar: distclean
+	@$(REBAR3) as prod tar
+
 test:
 	@$(REBAR3) do eunit, ct

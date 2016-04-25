@@ -5,8 +5,7 @@
   {mod, { elevator_scheduler, []}},
   {applications,
    [kernel,
-    stdlib,
-    lager
+    stdlib
    ]},
   {env,[]},
   {modules, []},
