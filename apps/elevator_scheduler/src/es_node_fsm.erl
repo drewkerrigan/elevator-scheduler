@@ -5,7 +5,9 @@
 %% API
 -export([start_link/2]).
 
--export([pickup/3,
+-export([update/3,
+         update/4,
+         pickup/3,
          step/1,
          status/1]).
 
@@ -52,6 +54,14 @@
 -spec start_link(atom(), atom()) -> {ok, pid()} | {error, term()}.
 start_link(Key, SiteKey) ->
     gen_fsm:start_link(?MODULE, {Key, SiteKey}, []).
+
+-spec update(pid(), non_neg_integer(), up | down) -> ok.
+update(Pid, Floor, Direction) ->
+    gen_fsm:send_all_state_event(Pid, {update, Floor, Direction}).
+
+-spec update(pid(), non_neg_integer(), up | down, [term()]) -> ok.
+update(Pid, Floor, Direction, GoalFloors) ->
+    gen_fsm:send_all_state_event(Pid, {update, Floor, Direction, GoalFloors}).
 
 -spec pickup(pid(), non_neg_integer(), up | down) -> ok.
 pickup(Pid, Floor, Direction) ->
@@ -114,12 +124,19 @@ moving(_Event, _From, State) ->
     {reply, {error, unhandled_event}, ready, State}.
 
 -spec handle_event(term(), state_name(), #state{}) -> async_reply().
+handle_event({update, Floor, Direction}, _StateName, State) ->
+    State1 = State#state{floor = Floor, direction = Direction},
+    {next_state, moving, State1};
+handle_event({update, Floor, Direction, GoalFloors}, _StateName, State) ->
+    State1 = State#state{floor = Floor, direction = Direction, 
+                         goal_floors = GoalFloors},
+    {next_state, moving, State1};
 handle_event({pickup, Floor, Direction}, _StateName, State =
                  #state{floor = CurrentFloor,
                         direction = CurrentDirection,
                         goal_floors = GoalFloors}) ->
     GoalFloors1 = [{Floor, Direction} | GoalFloors],
-    GoalFloors2 = sort_goal_floors(CurrentFloor, CurrentDirection, GoalFloors1),
+    GoalFloors2 = sort_floor_distances(CurrentFloor, CurrentDirection, GoalFloors1),
     State1 = State#state{goal_floors = GoalFloors2},
     {next_state, moving, State1};
 handle_event(_Event, _StateName, State) ->
@@ -158,16 +175,17 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec sort_goal_floors(non_neg_integer(), up | down,
+-spec sort_floor_distances(non_neg_integer(), up | down,
                       [{non_neg_integer(), up | down}]) -> 
                              [{non_neg_integer(), up | down}].
-sort_goal_floors(F1, D1, GoalFloors) ->
-    Sorted1 = 
-        lists:keysort(1, [ {es_util:distance(F1, F2), {F2, D2}} 
+sort_floor_distances(F1, D1, GoalFloors) ->
+    Sorted1 = filter_sort_floor_distances(F1, GoalFloors, D1),
+    Sorted2 = filter_sort_floor_distances(F1, GoalFloors, 
+                                      es_util:invert_direction(D1)),
+    Sorted1 ++ Sorted2.
+
+filter_sort_floor_distances(F1, GoalFloors, FilterDirection) ->
+    Sorted = lists:keysort(1, [ {es_util:distance(F1, F2), {F2, D2}} 
                            || {F2, D2} <- GoalFloors, 
-                              D2 =:= D1 ]),
-    Sorted2 = 
-        lists:keysort(1, [ {es_util:distance(F1, F2), {F2, D2}} 
-                           || {F2, D2} <- GoalFloors, 
-                              D2 =:= es_util:invert_direction(D1) ]),
-    [{F2, D2} || {_, {F2, D2}} <- Sorted1 ++ Sorted2 ].
+                              D2 =:= FilterDirection ]),
+    [ {F, D} || {_, {F, D}} <- Sorted ].

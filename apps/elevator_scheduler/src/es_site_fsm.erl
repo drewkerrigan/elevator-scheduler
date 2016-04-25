@@ -106,7 +106,7 @@ ready({pickup, Floor, Direction}, _From, State =
             NodeStatuses = 
                 [ es_node_manager:status(K)
                   || K <- NodeKeys ],
-            Reply = do_pickup(NodeStatuses, Floor, Direction),
+            Reply = do_pickup(Floor, Direction, NodeStatuses),
             {reply, Reply, ready, State}
     end;
 ready(_Event, _From, State) ->
@@ -146,26 +146,25 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 
 -spec do_pickup([{atom(), term()}], non_neg_integer(), up | down) -> ok.
-do_pickup(NodeStatuses, Floor, Direction) ->
-    [{_, TargetNode}|_] = 
-        case lists:keysort(1, calc_floor_distances(
-                                NodeStatuses, Floor, 
-                                Direction)) of
-            [] ->
-                lists:keysort(1, calc_floor_distances(
-                                   NodeStatuses, Floor, 
-                                   es_util:invert_direction(Direction)));
-            S -> S
-        end,
+do_pickup(Floor, Direction, NodeStatuses) ->
+    [TargetNode|_] = sort_node_distances(Floor, Direction, NodeStatuses),
     es_node_manager:pickup(TargetNode, Floor, Direction).
 
-calc_floor_distances(NodeStatuses, Floor, Direction) ->
-    [ {es_util:distance(Floor, calc_goal_floor(Status)), K}
-      || {K, Status} <- NodeStatuses,
-         Direction =:= calc_goal_direction(Status)
-    ].
+sort_node_distances(Floor, Direction, NodeStatuses) ->
+    Sorted1 = filter_sort_node_distances(Floor, NodeStatuses, Direction),
+    Sorted2 = filter_sort_node_distances(Floor, NodeStatuses, 
+                                         es_util:invert_direction(Direction)),
+    Sorted1 ++ Sorted2.
 
-calc_goal_floor(Status) ->
+filter_sort_node_distances(Floor, NodeStatuses, FilterDirection) ->
+    Nodes = [ {es_util:distance(Floor, calc_node_goal_floor(Status)), K}
+      || {K, Status} <- NodeStatuses,
+         FilterDirection =:= calc_node_goal_direction(Floor, Status)
+    ],
+    Sorted = lists:keysort(1, Nodes),
+    [ N || {_, N} <- Sorted ].
+
+calc_node_goal_floor(Status) ->
     case proplists:get_value(goal_floors, Status) of
         [] ->
             proplists:get_value(floor, Status);
@@ -173,10 +172,11 @@ calc_goal_floor(Status) ->
             GF
     end.
 
-calc_goal_direction(Status) ->
+calc_node_goal_direction(F2, Status) ->
     case proplists:get_value(goal_floors, Status) of
         [] ->
-            proplists:get_value(direction, Status);
+            F1 = calc_node_goal_floor(Status),
+            es_util:direction(F1, F2);
         [{_, GD}|_] ->
             GD
     end.
