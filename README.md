@@ -4,7 +4,7 @@ An OTP application to control and schedule multiple groups (`sites`) of multiple
 
 ## Precompiled Tarball
 
-A Mac OSX 10.11 precompiled tarball is available here: []().
+A Mac OSX 10.11 precompiled tarball is available here: [https://github.com/drewkerrigan/elevator-scheduler/releases/download/0.1.0/elevator_scheduler-0.1.0.tar.gz](https://github.com/drewkerrigan/elevator-scheduler/releases/download/0.1.0/elevator_scheduler-0.1.0.tar.gz).
 
 ## Build
 
