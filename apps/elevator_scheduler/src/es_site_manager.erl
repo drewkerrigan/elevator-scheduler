@@ -83,7 +83,6 @@ status() ->
 %%% Supervisor callbacks
 %%%===================================================================
 
--spec init([term()]) -> {error, term()} | {ok, term()}.
 init([]) ->
     {ok, {{one_for_one, 1, 1}, []}}.
 
@@ -91,6 +90,6 @@ init([]) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_site_pid(atom()) -> pid().
+-spec get_site_pid(atom()) -> {error, not_found} | pid().
 get_site_pid(Key) ->
     proplists:get_value(Key, get_sites(), {error, not_found}).

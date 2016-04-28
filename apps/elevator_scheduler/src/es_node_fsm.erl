@@ -84,7 +84,7 @@ status(Pid) ->
 %%% gen_fsm callbacks
 %%%===================================================================
 
--spec init(atom()) -> {ok, state_name(), #state{}}.
+-spec init({atom(),atom()}) -> {ok, state_name(), #state{}}.
 init({Key, SiteKey}) ->
     {ok, ready, #state{key = Key,
                        site_key = SiteKey}}.
@@ -120,11 +120,11 @@ moving(step, State =
 moving(_Event, State) ->
     {stop, {error, unhandled_event}, State}.
 
--spec ready(term(), pid(), #state{}) -> sync_reply().
+-spec ready(term(), {pid(),term()}, #state{}) -> sync_reply().
 ready(_Event, _From, State) ->
     {reply, {error, unhandled_event}, ready, State}.
 
--spec moving(term(), pid(), #state{}) -> sync_reply().
+-spec moving(term(), {pid(),term()}, #state{}) -> sync_reply().
 moving(_Event, _From, State) ->
     {reply, {error, unhandled_event}, ready, State}.
 
@@ -152,7 +152,7 @@ handle_event({pickup, Floor, Direction}, _StateName, State =
 handle_event(_Event, _StateName, State) ->
     {stop, {error, unhandled_event}, State}.
 
--spec handle_sync_event(term(), pid(), state_name(), #state{}) ->
+-spec handle_sync_event(term(), {pid(),term()}, state_name(), #state{}) ->
                                sync_reply().
 handle_sync_event(status, _From, StateName, State = 
                  #state{key = Key,

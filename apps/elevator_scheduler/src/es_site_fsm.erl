@@ -82,7 +82,7 @@ ready(step, State = #state{node_keys = NodeKeys}) ->
 ready(_Event, State) ->
     {stop, {error, unhandled_event}, State}.
 
--spec ready(term(), pid(), #state{}) -> sync_reply().
+-spec ready(term(), {pid(),term()}, #state{}) -> sync_reply().
 ready(add_node, _From, State = 
           #state{key = Key,
                  node_keys = NodeKeys}) ->
@@ -115,7 +115,7 @@ ready(_Event, _From, State) ->
 handle_event(_Event, _StateName, State) ->
     {stop, {error, unhandled_event}, State}.
 
--spec handle_sync_event(term(), pid(), state_name(), #state{}) ->
+-spec handle_sync_event(term(), {pid(),term()}, state_name(), #state{}) ->
                                sync_reply().
 handle_sync_event(status, _From, StateName, State = 
                       #state{key = Key,

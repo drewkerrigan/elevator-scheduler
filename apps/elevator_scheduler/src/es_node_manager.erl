@@ -112,7 +112,6 @@ status(Key) ->
 %%% Supervisor callbacks
 %%%===================================================================
 
--spec init([term()]) -> {error, term()} | {ok, term()}.
 init([]) ->
     {ok, {{one_for_one, 1, 1}, []}}.
 
@@ -120,6 +119,6 @@ init([]) ->
 %%% Internal functions
 %%%===================================================================
 
--spec get_node_pid(atom()) -> pid().
+-spec get_node_pid(atom()) -> {error, not_found} | pid().
 get_node_pid(Key) ->
     proplists:get_value(Key, get_nodes(), {error, not_found}).
